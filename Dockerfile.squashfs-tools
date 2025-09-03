@@ -22,11 +22,11 @@ RUN git clone https://github.com/plougher/squashfs-tools && cd squashfs-tools &&
 WORKDIR /usr/src/squashfs-tools/squashfs-tools
 # We don't use most of these libs, so turn them off.
 RUN sed -i \
-  -e 's/LZO_SUPPORT = 1/LZO_SUPPORT = 0/' \
-  -e 's/XZ_SUPPORT = 1/XZ_SUPPORT = 0/' \
-  -e 's/LZ4_SUPPORT = 1/LZ4_SUPPORT = 0/' \
-  -e 's/USE_PREBUILT_MANPAGES = n/USE_PREBUILT_MANPAGES = y/' \
-  Makefile
+    -e 's/LZO_SUPPORT = 1/LZO_SUPPORT = 0/' \
+    -e 's/XZ_SUPPORT = 1/XZ_SUPPORT = 0/' \
+    -e 's/LZ4_SUPPORT = 1/LZ4_SUPPORT = 0/' \
+    -e 's/USE_PREBUILT_MANPAGES = n/USE_PREBUILT_MANPAGES = y/' \
+    Makefile
 ENV CFLAGS="-O2 -Wall -static"
 ENV LDFLAGS="-static"
 
