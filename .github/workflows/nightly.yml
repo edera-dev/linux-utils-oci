@@ -42,3 +42,51 @@ jobs:
         TAGS: ghcr.io/edera-dev/${{ matrix.component }}:nightly
         COSIGN_EXPERIMENTAL: "true"
       run: cosign sign --yes "${TAGS}@${DIGEST}"
+
+    - name: Build `build` stage for source-commit capture
+      uses: docker/build-push-action@15560696de535e4014efeff63c48f16952e52dd1 # v6.2.0
+      with:
+        file: ./Dockerfile.${{ matrix.component }}
+        target: build
+        platforms: linux/amd64
+        load: true
+        tags: sbom-scan-${{ matrix.component }}:latest
+    - name: Generate and attest CycloneDX SBOM
+      env:
+        DIGEST: ${{ steps.push-step.outputs.digest }}
+        TAGS: ghcr.io/edera-dev/${{ matrix.component }}:nightly
+        COMPONENT: ${{ matrix.component }}
+        COSIGN_EXPERIMENTAL: "true"
+      run: |
+        set -euo pipefail
+        scan="sbom-scan-${COMPONENT}:latest"
+
+        sha()  { docker run --rm "${scan}" git -C "$1" rev-parse HEAD; }
+        desc() { docker run --rm "${scan}" git -C "$1" describe --tags --always; }
+        case "${COMPONENT}" in
+          squashfs-tools)
+            SQUASHFS_TOOLS_COMMIT="$(sha /usr/src/squashfs-tools)"
+            SQUASHFS_TOOLS_VERSION="$(desc /usr/src/squashfs-tools)"
+            ZLIB_NG_COMMIT="$(sha /usr/src/zlib-ng)"
+            ZLIB_NG_VERSION="$(desc /usr/src/zlib-ng)"
+            export SQUASHFS_TOOLS_COMMIT SQUASHFS_TOOLS_VERSION \
+                   ZLIB_NG_COMMIT ZLIB_NG_VERSION
+            ;;
+          mkfs)
+            E2FSPROGS_COMMIT="$(sha /usr/src/e2fsprogs)"
+            E2FSPROGS_VERSION="$(desc /usr/src/e2fsprogs)"
+            export E2FSPROGS_COMMIT E2FSPROGS_VERSION
+            ;;
+        esac
+
+        python3 generate-sbom.py
+
+        jq -e '.bomFormat == "CycloneDX" and ((.components // []) | length > 0)' \
+          "${COMPONENT}.cdx.json" >/dev/null \
+          || { echo "::error::SBOM for ${COMPONENT} is empty or invalid"; exit 1; }
+        jq '{component: env.COMPONENT, components: (.components | length)}' \
+          "${COMPONENT}.cdx.json"
+
+        cosign attest --yes --type cyclonedx \
+          --predicate "${COMPONENT}.cdx.json" \
+          "${TAGS}@${DIGEST}"
