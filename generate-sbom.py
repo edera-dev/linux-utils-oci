@@ -96,20 +96,23 @@ def build_sources(comp):
 
 def main():
     comp = os.environ["COMPONENT"]
+    version = os.environ.get("COMPONENT_VERSION", "")[:7]
     sources = build_sources(comp)
 
-    image_ref = "%s@nightly" % comp
+    image_ref = "%s@%s" % (comp, version) if version else "%s@nightly" % comp
+    metadata_component = {
+        "bom-ref": image_ref,
+        "type": "container",
+        "name": comp,
+    }
+    if version:
+        metadata_component["version"] = version
+
     document = {
         "bomFormat": "CycloneDX",
         "specVersion": "1.6",
         "version": 1,
-        "metadata": {
-            "component": {
-                "bom-ref": image_ref,
-                "type": "container",
-                "name": comp,
-            }
-        },
+        "metadata": {"component": metadata_component},
         "components": sources,
         "dependencies": [
             {

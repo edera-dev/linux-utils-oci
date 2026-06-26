@@ -56,6 +56,7 @@ jobs:
         DIGEST: ${{ steps.push-step.outputs.digest }}
         TAGS: ghcr.io/edera-dev/${{ matrix.component }}:nightly
         COMPONENT: ${{ matrix.component }}
+        COMPONENT_VERSION: ${{ github.sha }}
         COSIGN_EXPERIMENTAL: "true"
       run: |
         set -euo pipefail
