@@ -7,13 +7,6 @@ WORKDIR /usr/src
 
 # build dependencies
 RUN apk update && apk add build-base cmake git sed zstd-dev zstd-static
-# build zlib-ng in static lib/"zlib-compat" mode (alpine doesn't have a static/dev variant yet)
-ENV ZLIB_NG_VERSION=2.2.4
-RUN git clone https://github.com/zlib-ng/zlib-ng.git && cd zlib-ng && git checkout $ZLIB_NG_VERSION
-WORKDIR /usr/src/zlib-ng
-RUN cmake . -DZLIB_COMPAT=1
-RUN cmake --build . --config Release
-RUN cmake --build . --target install
 
 # check out squashfs-tools sources
 WORKDIR /usr/src
@@ -22,6 +15,8 @@ RUN git clone https://github.com/plougher/squashfs-tools && cd squashfs-tools &&
 WORKDIR /usr/src/squashfs-tools/squashfs-tools
 # We don't use most of these libs, so turn them off.
 RUN sed -i \
+    -e 's/COMP_DEFAULT = gzip/COMP_DEFAULT = zstd/' \
+    -e 's/GZIP_SUPPORT = 1/GZIP_SUPPORT = 0/' \
     -e 's/LZO_SUPPORT = 1/LZO_SUPPORT = 0/' \
     -e 's/XZ_SUPPORT = 1/XZ_SUPPORT = 0/' \
     -e 's/LZ4_SUPPORT = 1/LZ4_SUPPORT = 0/' \
