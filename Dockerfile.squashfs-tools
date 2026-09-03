@@ -1,8 +1,10 @@
 FROM alpine:latest AS build
-# We would be fine using 4.7 (latest) except for needing
-# https://github.com/plougher/squashfs-tools/pull/314
-# for Alpine builds to work
-ARG SQUASHFS_TOOLS_VERSION=65362f488c8859db6612a1ed3630c7352fff2a7e
+# We would be fine using 4.7.5 (latest) except for needing
+# https://github.com/plougher/squashfs-tools/commit/a044577948aa09e6f10ce5cf95292f8971ac66b9 and
+# https://github.com/plougher/squashfs-tools/commit/52992df017ea9f80e37012947538249547a0d048
+# to fix https://github.com/edera-dev/protect/issues/3655
+# There is a build failure with `XZ_SUPPORT = 0` in some later revision.
+ARG SQUASHFS_TOOLS_VERSION=52992df017ea9f80e37012947538249547a0d048
 WORKDIR /usr/src
 
 # build dependencies
