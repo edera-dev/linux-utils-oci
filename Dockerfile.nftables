@@ -1,0 +1,22 @@
+FROM alpine:latest AS build
+WORKDIR /usr/src
+
+RUN apk update && apk add build-base linux-headers autoconf automake libtool pkgconf flex bison git jansson-dev jansson-static
+
+ARG NETFILTER=https://git.netfilter.org
+
+RUN set -e; for repo in libmnl libnftnl nftables; do \
+    ver=$(git -c 'versionsort.suffix=-' ls-remote --exit-code --refs --sort='version:refname' --tags $NETFILTER/$repo '*[0-9].*.*' | tail -n 1 | cut -d '/' -f 3) && \
+    git clone --depth 1 --branch $ver $NETFILTER/$repo; \
+    done
+
+ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+ENV CFLAGS="-O2 -static"
+ENV LDFLAGS="-static"
+
+RUN cd libmnl && ./autogen.sh && ./configure --enable-static --disable-shared && make -j`nproc` && make install
+RUN cd libnftnl && ./autogen.sh && ./configure --enable-static --disable-shared && make -j`nproc` && make install
+RUN cd nftables && autoreconf -fi && ./configure --disable-shared --enable-static --with-json --without-cli --with-mini-gmp --disable-man-doc --disable-python && make -j`nproc` LDFLAGS=-all-static && strip src/nft
+
+FROM scratch AS final
+COPY --from=build /usr/src/nftables/src/nft /nft

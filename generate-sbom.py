@@ -3,13 +3,20 @@
 
 Reads from the environment (set by the SBOM workflow step, resolved from the
 build-stage image):
-  COMPONENT               squashfs-tools | mkfs
+  COMPONENT               squashfs-tools | mkfs | nftables
   SQUASHFS_TOOLS_COMMIT   resolved commit of plougher/squashfs-tools
   SQUASHFS_TOOLS_VERSION  git-describe of same
   ZLIB_NG_COMMIT          resolved commit of zlib-ng/zlib-ng
   ZLIB_NG_VERSION         git-describe of same
   E2FSPROGS_COMMIT        resolved commit of e2fsprogs
   E2FSPROGS_VERSION       git-describe of same (the build-discovered release tag)
+  LIBMNL_COMMIT           resolved commit of libmnl
+  LIBMNL_VERSION          git-describe of same
+  LIBNFTNL_COMMIT         resolved commit of libnftnl
+  LIBNFTNL_VERSION        git-describe of same
+  NFTABLES_COMMIT         resolved commit of nftables
+  NFTABLES_VERSION        git-describe of same
+  JANSSON_VERSION         Alpine jansson-static package version
 
 Writes <COMPONENT>.cdx.json (CycloneDX 1.6) in the current directory.
 """
@@ -65,6 +72,46 @@ def e2fsprogs_source(commit, version):
     return component
 
 
+def netfilter_source(name, commit, version, ctype="application"):
+    """Netfilter projects live on git.netfilter.org (not GitHub), so they are
+    pkg:generic components with the commit carried as a property."""
+    purl = "pkg:generic/%s" % name
+    if version:
+        purl = "%s@%s" % (purl, version)
+    component = {
+        "bom-ref": purl,
+        "type": ctype,
+        "name": name,
+        "purl": purl,
+        "externalReferences": [
+            {"type": "vcs", "url": "https://git.netfilter.org/%s" % name}
+        ],
+    }
+    if version:
+        component["version"] = version
+    if commit:
+        component["properties"] = [
+            {"name": "dev.edera.source.commit", "value": commit}
+        ]
+    return component
+
+
+def apk_package(name, version):
+    """An Alpine package linked statically into the binary."""
+    purl = "pkg:apk/alpine/%s" % name
+    if version:
+        purl = "%s@%s" % (purl, version)
+    component = {
+        "bom-ref": purl,
+        "type": "library",
+        "name": name,
+        "purl": purl,
+    }
+    if version:
+        component["version"] = version
+    return component
+
+
 def build_sources(comp):
     if comp == "squashfs-tools":
         return [
@@ -89,6 +136,27 @@ def build_sources(comp):
                 os.environ.get("E2FSPROGS_COMMIT", ""),
                 os.environ.get("E2FSPROGS_VERSION", ""),
             )
+        ]
+    if comp == "nftables":
+        return [
+            netfilter_source(
+                "nftables",
+                os.environ.get("NFTABLES_COMMIT", ""),
+                os.environ.get("NFTABLES_VERSION", ""),
+            ),
+            netfilter_source(
+                "libnftnl",
+                os.environ.get("LIBNFTNL_COMMIT", ""),
+                os.environ.get("LIBNFTNL_VERSION", ""),
+                ctype="library",
+            ),
+            netfilter_source(
+                "libmnl",
+                os.environ.get("LIBMNL_COMMIT", ""),
+                os.environ.get("LIBMNL_VERSION", ""),
+                ctype="library",
+            ),
+            apk_package("jansson-static", os.environ.get("JANSSON_VERSION", "")),
         ]
     print("ERROR: unknown COMPONENT %r" % comp, file=sys.stderr)
     sys.exit(1)

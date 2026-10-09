@@ -14,6 +14,7 @@ jobs:
         component:
         - squashfs-tools
         - mkfs
+        - nftables
     name: oci build ${{ matrix.component }}
     steps:
     - uses: step-security/harden-runner@17d0e2bd7d51742c71671bd19fa12bdc9d40a3d6 # v2.8.1
@@ -77,6 +78,17 @@ jobs:
             E2FSPROGS_COMMIT="$(sha /usr/src/e2fsprogs)"
             E2FSPROGS_VERSION="$(desc /usr/src/e2fsprogs)"
             export E2FSPROGS_COMMIT E2FSPROGS_VERSION
+            ;;
+          nftables)
+            LIBMNL_COMMIT="$(sha /usr/src/libmnl)"
+            LIBMNL_VERSION="$(desc /usr/src/libmnl)"
+            LIBNFTNL_COMMIT="$(sha /usr/src/libnftnl)"
+            LIBNFTNL_VERSION="$(desc /usr/src/libnftnl)"
+            NFTABLES_COMMIT="$(sha /usr/src/nftables)"
+            NFTABLES_VERSION="$(desc /usr/src/nftables)"
+            JANSSON_VERSION="$(docker run --rm "${scan}" apk list -I jansson-static | sed 's/^jansson-static-//; s/ .*//')"
+            export LIBMNL_COMMIT LIBMNL_VERSION LIBNFTNL_COMMIT LIBNFTNL_VERSION \
+                   NFTABLES_COMMIT NFTABLES_VERSION JANSSON_VERSION
             ;;
         esac
 
